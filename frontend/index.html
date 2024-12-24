@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Charity Event</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.6.1/dist/web3.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin-top: 50px;
+      }
+
+      input,
+      button {
+        padding: 10px;
+        margin: 10px;
+        width: 80%;
+        max-width: 400px;
+      }
+
+      #accountSection {
+        margin-top: 20px;
+      }
+
+      #donationStatus,
+      #rewardStatus {
+        margin-top: 20px;
+      }
+
+      .status {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Charity Event - Donate and Earn Tokens</h1>
+
+    <!-- MetaMask Account Section -->
+    <div id="accountSection">
+      <button id="connectButton">Connect MetaMask</button>
+      <p id="account"></p>
+    </div>
+
+    <!-- Donation Section -->
+    <h3>Donate to the Charity</h3>
+    <input
+      type="number"
+      id="donationAmount"
+      placeholder="Amount to Donate (in Ether)"
+    />
+    <button id="donateButton">Donate and Earn Tokens</button>
+
+    <!-- Reward Section -->
+    <h3>Claim Your Reward Tokens</h3>
+    <button id="claimRewardButton">Claim Reward Tokens</button>
+
+    <!-- Donation and Reward Status -->
+    <div id="donationStatus"></div>
+    <div id="rewardStatus"></div>
+
+    <script>
+      let web3;
+      let contract;
+      let account;
+
+      const contractABI = [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_rewardToken",
+              type: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "donor",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "tokensRewarded",
+              type: "uint256",
+            },
+          ],
+          name: "DonationReceived",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "donor",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "tokensClaimed",
+              type: "uint256",
+            },
+          ],
+          name: "RewardClaimed",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "claimReward",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "donateAndEarnTokens",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "donorToAmount",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "donorToRewardTokens",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "eventOrganizer",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "rewardToken",
+          outputs: [
+            {
+              internalType: "contract IERC20",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalFundsRaised",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      const contractAddress = "0x51e62238fca15ad18FEa0a5a5369c7CbdEa26d36"; // Replace with your contract's deployed address
+
+      // Initialize Web3 and contract
+      window.addEventListener("load", async () => {
+        if (window.ethereum) {
+          web3 = new Web3(window.ethereum);
+          try {
+            await ethereum.request({ method: "eth_requestAccounts" });
+            account = (await web3.eth.getAccounts())[0];
+            document.getElementById(
+              "account"
+            ).innerText = `Connected Account: ${account}`;
+            contract = new web3.eth.Contract(contractABI, contractAddress);
+          } catch (error) {
+            console.error("Error connecting MetaMask:", error);
+          }
+        } else {
+          alert("Please install MetaMask to use this feature.");
+        }
+      });
+
+      // Connect MetaMask and update the account
+      document
+        .getElementById("connectButton")
+        .addEventListener("click", async () => {
+          if (window.ethereum) {
+            await ethereum.request({ method: "eth_requestAccounts" });
+            account = (await web3.eth.getAccounts())[0];
+            document.getElementById(
+              "account"
+            ).innerText = `Connected Account: ${account}`;
+          } else {
+            alert("Please install MetaMask to use this feature.");
+          }
+        });
+
+      // Donate and Earn Tokens
+      document
+        .getElementById("donateButton")
+        .addEventListener("click", async () => {
+          const amountInEther = document.getElementById("donationAmount").value;
+          if (!amountInEther || parseFloat(amountInEther) <= 0) {
+            alert("Please enter a valid donation amount.");
+            return;
+          }
+
+          const amountInWei = web3.utils.toWei(amountInEther, "ether");
+
+          try {
+            await contract.methods
+              .donateAndEarnTokens()
+              .send({ from: account, value: amountInWei });
+            document.getElementById(
+              "donationStatus"
+            ).innerText = `Successfully donated ${amountInEther} Ether and earned tokens!`;
+          } catch (error) {
+            console.error("Error donating:", error);
+            document.getElementById("donationStatus").innerText =
+              "Donation failed. Please try again.";
+          }
+        });
+
+      // Claim Reward Tokens
+      document
+        .getElementById("claimRewardButton")
+        .addEventListener("click", async () => {
+          try {
+            const rewardTokens = await contract.methods
+              .donorToRewardTokens(account)
+              .call();
+            if (rewardTokens > 0) {
+              await contract.methods.claimReward().send({ from: account });
+              document.getElementById(
+                "rewardStatus"
+              ).innerText = `Successfully claimed ${rewardTokens} reward tokens!`;
+            } else {
+              document.getElementById("rewardStatus").innerText =
+                "You have no reward tokens to claim.";
+            }
+          } catch (error) {
+            console.error("Error claiming reward tokens:", error);
+            document.getElementById("rewardStatus").innerText =
+              "Error claiming tokens. Please try again.";
+          }
+        });
+    </script>
+  </body>
+</html>
